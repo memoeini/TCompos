@@ -5,38 +5,11 @@
 
 
 ## Description
-
-This is TChecker, an *open-source* model-checker for timed systems. TChecker is
-written in C++17 and provides a library of classes to describe timed systems,
-to compute the corresponding timed automata, to compute its semantics, as well
-as symbolic representations and algorithms to check requirements over timed
-systems. It also comes with tools to run these algorithms from the command
-line.
-
-TChecker originates and is still lead by academic research on the verification
-of timed systems. It is intended to serve as a plateform to experiment new data
-structures and algorithms for the verification and the synthesis of timed
-systems. The goal of the project is to implement state-of-the-art algorithms as
-well as benchmarks to evaluate these algorithms, and to share then with the
-community.
-
-**NEW:** [try TChecker online](https://tchecker.labri.fr/)
-
-## Installation
-
-Please, refer to [Installation of TChecker](https://github.com/ticktac-project/tchecker/wiki/Installation-of-TChecker) or to file INSTALL.md in the repository.
-
-## Usage
-
-Please, refer to [Using TChecker](https://github.com/ticktac-project/tchecker/wiki/Using-TChecker) or to file doc/usage.md in the repository.
-
-## Credits
-
-The authors of the project are credited in the file AUTHORS in the repository.
+CTChecker is an open-source tool for compositional verification of timed automata. It is based on the tool TChecker and implements a new efficient model checking algorithm. 
 
 ## License
 
-TChecker is published under the MIT license reproduced below (and in the file
+CTChecker is published under the MIT license reproduced below (and in the file
 LICENSE in the repository).
 
 MIT License

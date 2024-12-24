@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_GRAPH_NODE_HH
@@ -156,6 +153,60 @@ struct node_refzg_state_t {
 
 private:
   tchecker::refzg::const_state_sptr_t _state; /*!< State of the zone graph with reference clocks */
+};
+
+struct node_reset_history {
+  /*!
+   \brief Constructor
+   \param number_of_clocks : number of the clocks in the system
+   \post this node keeps the number of the clocks
+  */
+  node_reset_history(const boost::dynamic_bitset<> rhv);
+
+  /*!
+  \brief Accessor
+  \return returns the clock reset history
+  */
+  boost::dynamic_bitset<> reset_history_vector() const { return _reset_history_vector; }
+
+  /*!
+  \brief Accessor
+  \post updates the clock reset history
+  */
+  void update_reset_history_vector(boost::dynamic_bitset<> vector) { _reset_history_vector = vector; }
+
+  // /*!
+  // \brief Accessor
+  // \return the consistency status of the node regarding clock reset history
+  // */
+  // bool get_consistency_status(std::vector<bool> vector) { return _is_consistent; }
+  //
+  // /*!
+  //   \brief Accessor
+  //   \post sets the consistency status of the node regarding clock reset history
+  //   */
+  // void set_consistency_status(bool status) { _is_consistent = status; }
+
+private:
+  boost::dynamic_bitset<> _reset_history_vector; /*!< vector of clock reset history */
+  // bool _is_consistent; /*!< consistency status */
+};
+
+struct node_reachability {
+  node_reachability (bool status);
+
+  bool get_reach_status ()
+  {
+    return _is_reachable;
+  }
+
+  void update_reach_status (bool status)
+  {
+    _is_reachable = status;
+  }
+
+private:
+  bool _is_reachable;
 };
 
 } // namespace graph

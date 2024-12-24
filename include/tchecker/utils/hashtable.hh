@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_HASHTABLE_HH
@@ -656,6 +653,15 @@ public:
   {
     auto && [it, inserted] = _table.insert(o);
     return inserted;
+  }
+
+  void remove(SPTR const & o)
+  {
+    auto it = _table.find(o);
+    if (it == _table.end()) {
+      throw std::invalid_argument("Removing an object that is not stored");
+    }
+    remove(it);
   }
 
   /*!

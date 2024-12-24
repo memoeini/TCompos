@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_SYSTEM_INTVAR_HH
@@ -94,6 +91,8 @@ public:
    \return integer variables
    */
   inline tchecker::integer_variables_t const & integer_variables() const { return _integer_variables; }
+
+
 
 private:
   tchecker::integer_variables_t _integer_variables;                          /*!< Integer variables */

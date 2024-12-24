@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_REACHABILITY_GRAPH_HH
@@ -291,6 +288,36 @@ public:
   {
     edge_sptr_t edge = _edge_pool.construct(args...);
     _directed_graph.add_edge(n1, n2, edge);
+  }
+
+  void change_edge_src (edge_sptr_t const & edge, node_sptr_t const & new_src) {
+    _directed_graph.change_edge_src(edge, new_src);
+  }
+
+  void change_edge_tgt (edge_sptr_t const & edge, node_sptr_t const & new_tgt) {
+    _directed_graph.change_edge_tgt(edge, new_tgt);
+  }
+
+  void remove_node(node_sptr_t const & n)
+  {
+    // assert(!is_connected(n));
+    _find_graph.remove_node(n);
+  }
+
+  void remove_edge(edge_sptr_t const & e) {
+    _directed_graph.remove_edge(e);
+  }
+
+  void remove_outgoing_edges(node_sptr_t const & n)
+  {
+    _directed_graph.remove_outgoing_edges(n);
+    // assert(!is_connected(n));
+  }
+
+  void remove_incoming_edges(node_sptr_t const & n)
+  {
+    _directed_graph.remove_incoming_edges(n);
+    // assert(!is_connected(n));
   }
 
   /*!

@@ -1,13 +1,11 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_CONFIG_HH
 #define TCHECKER_CONFIG_HH
 
 #cmakedefine INTEGER_T_SIZE @INTEGER_T_SIZE@
+#cmakedefine USE_BOOST_JSON @USE_BOOST_JSON@
 
 #endif // TCHECKER_CONFIG_HH

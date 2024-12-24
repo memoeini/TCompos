@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_SUBSUMPTION_GRAPH_HH
@@ -355,6 +352,12 @@ public:
   {
     _directed_graph.remove_edges(n);
     assert(!is_connected(n));
+  }
+
+  void remove_outgoing_edges(node_sptr_t const & n)
+  {
+    _directed_graph.remove_outgoing_edges(n);
+    // assert(!is_connected(n));
   }
 
   /*!

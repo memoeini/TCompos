@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_PARSING_DECLARATION_HH
@@ -1038,6 +1035,10 @@ public:
   inline tchecker::parsing::clock_declaration_t const * get_clock_declaration(std::string const & name) const
   {
     return get_declaration(name, _clocks);
+  }
+
+  inline std::unordered_map<std::string, tchecker::parsing::clock_declaration_t const *> const & get_clocks () const {
+    return _clocks;
   }
 
   /*!

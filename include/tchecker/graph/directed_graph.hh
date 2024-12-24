@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_DIRECTED_GRAPH_HH
@@ -339,6 +336,38 @@ public:
       remove_edge(edge);
     }
 
+    auto in_edges = incoming_edges(n);
+    auto in_end = in_edges.end();
+    for (auto it = in_edges.begin(); it != in_end;) {
+      EDGE_PTR edge = *it;
+      ++it;
+      remove_edge(edge);
+    }
+  }
+
+  void change_edge_src (EDGE_PTR const & edge, NODE_PTR const & new_src) {
+    remove_edge<struct tchecker::graph::directed::details::outgoing>(edge);     // first, remove from the outgoing list
+    add_edge<struct tchecker::graph::directed::details::outgoing>(new_src, edge);     // then, add with a new source
+  }
+
+  void change_edge_tgt (EDGE_PTR const & edge, NODE_PTR const & new_tgt) {
+    remove_edge<struct tchecker::graph::directed::details::incoming>(edge);     // first, remove from the incoming list
+    add_edge<struct tchecker::graph::directed::details::incoming>(new_tgt, edge);     // then, add with a new target
+  }
+
+  void remove_outgoing_edges(NODE_PTR const & n)
+  {
+    auto out_edges = outgoing_edges(n);
+    auto out_end = out_edges.end();
+    for (auto it = out_edges.begin(); it != out_end;) {
+      EDGE_PTR edge = *it;
+      ++it;
+      remove_edge(edge);
+    }
+  }
+
+  void remove_incoming_edges (NODE_PTR const & n)
+  {
     auto in_edges = incoming_edges(n);
     auto in_end = in_edges.end();
     for (auto it = in_edges.begin(); it != in_end;) {

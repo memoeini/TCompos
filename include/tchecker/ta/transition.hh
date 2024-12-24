@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_TA_TRANSITION_HH
@@ -85,7 +82,7 @@ public:
 
   /*!
    \brief Accessor
-   \return this transitions's source invariant
+   \return this transition's source invariant
    */
   tchecker::range_t<tchecker::clock_constraint_container_const_iterator_t> src_invariant() const;
 
@@ -112,6 +109,7 @@ protected:
   tchecker::clock_constraint_container_t _guard;         /*!< Guard */
   tchecker::clock_reset_container_t _reset;              /*!< Reset */
   tchecker::clock_constraint_container_t _tgt_invariant; /*!< Target invariant */
+
 };
 
 /*!

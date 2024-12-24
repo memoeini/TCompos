@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_GRAPH_EDGE_HH
@@ -12,7 +9,7 @@
 #include <string>
 
 #include "tchecker/syncprod/vedge.hh"
-#include "tchecker/zg/zg.hh"
+#include "tchecker/zg/zg_ha.hh"
 
 namespace tchecker {
 
@@ -52,6 +49,16 @@ public:
 
 private:
   tchecker::const_vedge_sptr_t const _vedge; /*!< Tuple of edges */
+};
+
+struct edge_rel_transition {
+
+  edge_rel_transition(zg_ha::transition_t const & transition);
+
+  inline tchecker::zg_ha::transition_t const & get_transition() const { return _transition; }
+
+private:
+  zg_ha::transition_t const & _transition;
 };
 
 } // namespace graph

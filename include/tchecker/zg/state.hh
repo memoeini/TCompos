@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_ZG_STATE_HH
@@ -149,6 +146,8 @@ bool operator!=(tchecker::zg::state_t const & s1, tchecker::zg::state_t const & 
  */
 bool shared_equal_to(tchecker::zg::state_t const & s1, tchecker::zg::state_t const & s2);
 
+bool shared_equal_to_incl_vector(tchecker::zg::state_t const & s1, tchecker::zg::state_t const & s2, const boost::dynamic_bitset<>& v1, const boost::dynamic_bitset<>& v2);
+
 /*!
  \brief Covering check
  \param s1 : state
@@ -216,6 +215,8 @@ std::size_t hash_value(tchecker::zg::state_t const & s);
  hashes the pointers (not the values)
  */
 std::size_t shared_hash_value(tchecker::zg::state_t const & s);
+
+std::size_t shared_hash_value_incl_vector(tchecker::zg::state_t const & s, boost::dynamic_bitset<> v);
 
 /*!
  \brief Lexical ordering on states of the zone graph

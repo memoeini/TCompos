@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #include <fstream>
@@ -10,14 +7,20 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <queue>
 #include <string>
 
-#include "concur19.hh"
 #include "tchecker/algorithms/reach/algorithm.hh"
+#include "tchecker/algorithms/search_order.hh"
 #include "tchecker/parsing/parsing.hh"
+#include "tchecker/syncprod/system.hh"
 #include "tchecker/utils/log.hh"
-#include "zg-covreach.hh"
+#include "zg-reach-compos.hh"
 #include "zg-reach.hh"
+
+#include "parse-graph.hh"
+#include "tchecker/waiting/factory.hh"
+#include "zg-history-aware.hh"
 
 /*!
  \file tck-reach.cc
@@ -32,9 +35,17 @@ static struct option long_options[] = {{"algorithm", required_argument, 0, 'a'},
                                        {"search-order", no_argument, 0, 's'},
                                        {"block-size", required_argument, 0, 0},
                                        {"table-size", required_argument, 0, 0},
+                                       {
+                                           "property-file",
+                                           required_argument,
+                                           0,
+                                           'P',
+                                       },
+                                       {"env-file", required_argument, 0, 'E'},
+                                       {"merge-flag", no_argument, 0, 'm'},
                                        {0, 0, 0, 0}};
 
-static char const * const options = (char *)"a:C:hl:o:s:";
+static char const * const options = (char *)"a:C:hl:o:s:P:E:m:";
 
 /*!
   \brief Display usage
@@ -45,13 +56,12 @@ void usage(char * progname)
   std::cerr << "Usage: " << progname << " [options] [file]" << std::endl;
   std::cerr << "   -a algorithm  reachability algorithm" << std::endl;
   std::cerr << "          reach      standard reachability algorithm over the zone graph" << std::endl;
-  std::cerr << "          concur19   reachability algorithm with covering over the local-time zone graph" << std::endl;
-  std::cerr << "          covreach   reachability algorithm with covering over the zone graph" << std::endl;
+  std::cerr << "          compos   compositional reachability algorithm over the history aware zone graph" << std::endl;
   std::cerr << "   -C type       type of certificate" << std::endl;
   std::cerr << "          none       no certificate (default)" << std::endl;
   std::cerr << "          graph      graph of explored state-space" << std::endl;
   std::cerr << "          symbolic   symbolic run to a state with searched labels if any" << std::endl;
-  std::cerr << "          concrete   concrete run to a state with searched labels if any (only for reach and covreach)"
+  std::cerr << "          concrete   concrete run to a state with searched labels if any (only for reach currently)"
             << std::endl;
   std::cerr << "   -h            help" << std::endl;
   std::cerr << "   -l l1,l2,...  comma-separated list of searched labels" << std::endl;
@@ -64,8 +74,7 @@ void usage(char * progname)
 
 enum algorithm_t {
   ALGO_REACH,    /*!< Reachability algorithm */
-  ALGO_CONCUR19, /*!< Covering reachability algorithm over the local-time zone graph */
-  ALGO_COVREACH, /*!< Covering reachability algorithm */
+  ALGO_COMPOS,   /*!< Compositional algorithm */
   ALGO_NONE,     /*!< No algorithm */
 };
 
@@ -85,6 +94,9 @@ static std::string output_file = "";                      /*!< Output file name 
 static std::ostream * os = &std::cout;                    /*!< Default output stream */
 static std::size_t block_size = 10000;                    /*!< Size of allocated blocks */
 static std::size_t table_size = 65536;                    /*!< Size of hash tables */
+static std::string property_file = "";
+static std::string env_file = "";
+static bool merge_flag = false;
 
 /*!
  \brief Parse command-line arguments
@@ -109,13 +121,20 @@ int parse_command_line(int argc, char * argv[])
       throw std::runtime_error("Unknown command-line option");
     else if (c != 0) {
       switch (c) {
+      case 'm':
+        merge_flag = true;
+        break;
+      case 'P':
+        property_file = optarg;
+        break;
+      case 'E':
+        env_file = optarg;
+        break;
       case 'a':
         if (strcmp(optarg, "reach") == 0)
           algorithm = ALGO_REACH;
-        else if (strcmp(optarg, "concur19") == 0)
-          algorithm = ALGO_CONCUR19;
-        else if (strcmp(optarg, "covreach") == 0)
-          algorithm = ALGO_COVREACH;
+        else if (strcmp(optarg, "compos") == 0)
+          algorithm = ALGO_COMPOS;
         else
           throw std::runtime_error("Unknown algorithm: " + std::string(optarg));
         break;
@@ -200,108 +219,242 @@ void reach(std::shared_ptr<tchecker::parsing::system_declaration_t> const & sysd
     std::cout << key << " " << value << std::endl;
 
   // certificate
-  if (certificate == CERTIFICATE_GRAPH)
-    tchecker::tck_reach::zg_reach::dot_output(*os, *graph, sysdecl->name());
-  else if ((certificate == CERTIFICATE_CONCRETE) && stats.reachable()) {
-    std::unique_ptr<tchecker::tck_reach::zg_reach::cex::concrete_cex_t> cex{
-        tchecker::tck_reach::zg_reach::cex::concrete_counter_example(*graph)};
-    if (cex->empty())
-      throw std::runtime_error("Unable to compute a concrete counter example");
-    tchecker::tck_reach::zg_reach::cex::dot_output(*os, *cex, sysdecl->name());
+   if (certificate == CERTIFICATE_GRAPH)
+     tchecker::tck_reach::zg_reach::dot_output(*os, *graph, sysdecl->name());
+   else if ((certificate == CERTIFICATE_CONCRETE) && stats.reachable()) {
+     std::unique_ptr<tchecker::tck_reach::zg_reach::cex::concrete_cex_t> cex{
+         tchecker::tck_reach::zg_reach::cex::concrete_counter_example(*graph)};
+     if (cex->empty())
+       throw std::runtime_error("Unable to compute a concrete counter example");
+     tchecker::tck_reach::zg_reach::cex::dot_output(*os, *cex, sysdecl->name());
+   }
+   else if ((certificate == CERTIFICATE_SYMBOLIC) && stats.reachable()) {
+     std::unique_ptr<tchecker::tck_reach::zg_reach::cex::symbolic_cex_t> cex{
+         tchecker::tck_reach::zg_reach::cex::symbolic_counter_example(*graph)};
+     if (cex->empty())
+       throw std::runtime_error("Unable to compute a symbolic counter example");
+     tchecker::tck_reach::zg_reach::cex::dot_output(*os, *cex, sysdecl->name());
+   }
+}
+
+bool check_consistency(
+    const tchecker::intrusive_shared_ptr_t<tchecker::make_shared_t<tchecker::graph::reachability::edge_t<
+        tchecker::tck_reach::zg_history_aware::node_t, tchecker::tck_reach::zg_history_aware::edge_t>>> & incoming_edge,
+    const tchecker::graph::reachability::node_sptr_t<tchecker::tck_reach::zg_history_aware::node_t,
+                                                     tchecker::tck_reach::zg_history_aware::edge_t> & src_node,
+    const std::size_t number_of_clocks)
+{
+  const tchecker::clock_constraint_container_t clk_guard_vector = incoming_edge->get_transition().guard_container();
+  const std::vector<unsigned> intvar_guard_vector = incoming_edge->get_transition().intvar_guard_container();
+  for (auto constraint : clk_guard_vector) {
+    tchecker::variable_id_t variable_id = (constraint.id1() != tchecker::REFCLOCK_ID) ? constraint.id1() : constraint.id2();
+    if (variable_id < src_node->reset_history_vector().size() && !src_node->reset_history_vector()[variable_id]) {
+      return false;
+    }
   }
-  else if ((certificate == CERTIFICATE_SYMBOLIC) && stats.reachable()) {
-    std::unique_ptr<tchecker::tck_reach::zg_reach::cex::symbolic_cex_t> cex{
-        tchecker::tck_reach::zg_reach::cex::symbolic_counter_example(*graph)};
-    if (cex->empty())
-      throw std::runtime_error("Unable to compute a symbolic counter example");
-    tchecker::tck_reach::zg_reach::cex::dot_output(*os, *cex, sysdecl->name());
+  for (auto variable_id : intvar_guard_vector) {
+    if (variable_id < src_node->reset_history_vector().size() &&
+        !src_node->reset_history_vector()[variable_id + number_of_clocks]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::tuple<bool, int>
+backward_propagation(const std::shared_ptr<tchecker::tck_reach::zg_history_aware::graph_t> & graph,
+                     std::queue<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & pi_nodes,
+                     std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & reachable_waiting_list,
+                     std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & reachable_visited_list)
+{
+
+  const std::size_t number_of_clocks = graph->zg().system().as_system_system().clocks_count(tchecker::VK_FLATTENED);
+  int new_count = 0;
+
+  const tchecker::system::system_t graph_system = graph->zg().system().as_system_system();
+  while (!pi_nodes.empty()) {
+    tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t pi_node = pi_nodes.front();
+    pi_nodes.pop();
+    pi_node->update_reach_status(true);
+    graph->remove_outgoing_edges(pi_node);
+    reachable_visited_list.insert(pi_node);
+
+    auto incoming_edges = graph->incoming_edges(pi_node);
+    for (auto incoming_edge : graph->incoming_edges(pi_node)) {
+      const auto edge = graph_system.edge(*incoming_edge->vedge().begin());
+      const auto & event_name = graph_system.event_name(edge->event_id());
+      auto src_node = graph->edge_src(incoming_edge);
+      if (event_name[0] == '_') {
+        const bool is_consistent = check_consistency(incoming_edge, src_node, number_of_clocks);
+        if (is_consistent) {
+          reachable_waiting_list.erase(src_node);
+          new_count++;
+          src_node->final(true);                  
+          pi_nodes.push(src_node);                
+          graph->remove_outgoing_edges(src_node); 
+          if (graph->incoming_edges(pi_node).empty()) {
+            graph->remove_node(pi_node);
+          }
+          if (src_node->initial()) {
+            return std::make_tuple(true, new_count);
+          }
+        }
+        else {
+          if (reachable_visited_list.insert(src_node).second) {
+            reachable_waiting_list.insert(src_node);
+          }
+        }
+      }
+      else {
+        if (reachable_visited_list.insert(src_node).second) {
+          reachable_waiting_list.insert(src_node);
+        }
+      }
+      src_node->update_reach_status(true);
+    }
+  }
+
+  return std::make_tuple(false, new_count);
+}
+
+void backward_reachability(
+    const std::shared_ptr<tchecker::tck_reach::zg_history_aware::graph_t> & graph,
+    const std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & reachable_waiting_list,
+    std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & reachable_visited_list)
+{
+  std::queue<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> second_reachable_waiting_list;
+
+  for (const auto & node : reachable_waiting_list) {
+    auto incoming_edges = graph->incoming_edges(node);
+    for (auto incoming_edge : incoming_edges) {
+      auto src_node = graph->edge_src(incoming_edge);
+      if (reachable_visited_list.insert(src_node).second) {
+        second_reachable_waiting_list.push(src_node);
+        src_node->update_reach_status(true);
+      }
+    }
+  }
+
+  while (!second_reachable_waiting_list.empty()) {
+    auto node = second_reachable_waiting_list.front();
+    second_reachable_waiting_list.pop();
+    auto incoming_edges = graph->incoming_edges(node);
+    for (auto incoming_edge : incoming_edges) {
+      auto src_node = graph->edge_src(incoming_edge);
+      if (reachable_visited_list.insert(src_node).second) {
+        second_reachable_waiting_list.push(src_node);
+        src_node->update_reach_status(true);
+      }
+    }
   }
 }
 
-/*!
- \brief Perform covering reachability analysis over the local-time zone graph
- \param sysdecl : system declaration
- \post statistics on covering reachability analysis of command-line specified
- labels in the system declared by sysdecl have been output to standard output.
- A certification has been output if required.
- \note This is the algorithm presented in R. Govind, Frédéric Herbreteau, B.
- Srivathsan, Igor Walukiewicz: "Revisiting Local Time Semantics for Networks of
- Timed Automata". CONCUR 2019: 16:1-16:15
-*/
-void concur19(std::shared_ptr<tchecker::parsing::system_declaration_t> const & sysdecl)
+void compos(const std::string & input_file, const std::shared_ptr<tchecker::parsing::system_declaration_t> & sysdecl,
+            const std::shared_ptr<tchecker::parsing::system_declaration_t> & propertydecl,
+            const std::shared_ptr<tchecker::parsing::system_declaration_t> & envdecl)
 {
-  tchecker::algorithms::covreach::stats_t stats;
-  std::shared_ptr<tchecker::tck_reach::concur19::graph_t> graph;
+  tchecker::algorithms::reach::stats_t stats;
+  std::shared_ptr<tchecker::tck_reach::zg_history_aware::graph_t> graph;
+  std::queue<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> pi_nodes;
+  long long int visited_states = 0;
+  long long int visited_transition = 0;
+  long double running_time = 0;
+  long long int iteration_num = 1;
+  bool early_termination = false;
+  std::string reachable;
 
-  if (certificate == CERTIFICATE_CONCRETE)
-    throw std::runtime_error("Concrete counter-example is not available for concur19 algorithm");
-
-  tchecker::algorithms::covreach::covering_t covering =
-      (certificate == CERTIFICATE_GRAPH ? tchecker::algorithms::covreach::COVERING_FULL
-                                        : tchecker::algorithms::covreach::COVERING_LEAF_NODES);
-
-  std::tie(stats, graph) = tchecker::tck_reach::concur19::run(sysdecl, labels, search_order, covering, block_size, table_size);
+  pi_nodes.empty();
+  std::tie(stats, graph) = tchecker::tck_reach::zg_history_aware::run(
+      propertydecl, envdecl, pi_nodes, early_termination, labels, search_order, block_size, table_size, iteration_num);
 
   // stats
   std::map<std::string, std::string> m;
   stats.attributes(m);
-  for (auto && [key, value] : m)
-    std::cout << key << " " << value << std::endl;
-
-  // certificate
-  if (certificate == CERTIFICATE_GRAPH)
-    tchecker::tck_reach::concur19::dot_output(*os, *graph, sysdecl->name());
-  else if ((certificate == CERTIFICATE_SYMBOLIC) && stats.reachable()) {
-    std::unique_ptr<tchecker::tck_reach::concur19::cex::symbolic::cex_t> cex{
-        tchecker::tck_reach::concur19::cex::symbolic::counter_example(*graph)};
-    if (cex->empty())
-      throw std::runtime_error("Unable to compute a symbolic counter example");
-    tchecker::tck_reach::concur19::cex::symbolic::dot_output(*os, *cex, sysdecl->name());
+  for (auto && [key, value] : m) {
+    if (key == "VISITED_STATES")
+      visited_states += std::stoll(value);
+    else if (key == "VISITED_TRANSITIONS")
+      visited_transition += std::stoll(value);
+    else if (key == "RUNNING_TIME_SECONDS")
+      running_time += std::stold(value);
+    else if (key == "REACHABLE")
+      reachable = value;
   }
-}
-
-/*!
- \brief Perform covering reachability analysis
- \param sysdecl : system declaration
- \post statistics on covering reachability analysis of command-line specified
- labels in the system declared by sysdecl have been output to standard output.
- A certification has been output if required.
-*/
-void covreach(std::shared_ptr<tchecker::parsing::system_declaration_t> const & sysdecl)
-{
-  tchecker::algorithms::covreach::stats_t stats;
-  std::shared_ptr<tchecker::tck_reach::zg_covreach::graph_t> graph;
-
-  tchecker::algorithms::covreach::covering_t covering =
-      (certificate == CERTIFICATE_GRAPH ? tchecker::algorithms::covreach::COVERING_FULL
-                                        : tchecker::algorithms::covreach::COVERING_LEAF_NODES);
-
-  std::tie(stats, graph) =
-      tchecker::tck_reach::zg_covreach::run(sysdecl, labels, search_order, covering, block_size, table_size);
-
-  // stats
-  std::map<std::string, std::string> m;
-  stats.attributes(m);
-  for (auto && [key, value] : m)
-    std::cout << key << " " << value << std::endl;
 
   // certificate
   if (certificate == CERTIFICATE_GRAPH)
-    tchecker::tck_reach::zg_covreach::dot_output(*os, *graph, sysdecl->name());
+    tchecker::tck_reach::zg_history_aware::dot_output(*os, *graph, propertydecl->name());
   else if ((certificate == CERTIFICATE_CONCRETE) && stats.reachable()) {
-    std::unique_ptr<tchecker::tck_reach::zg_covreach::cex::concrete_cex_t> cex{
-        tchecker::tck_reach::zg_covreach::cex::concrete_counter_example(*graph)};
+    std::unique_ptr<tchecker::tck_reach::zg_history_aware::cex::concrete_cex_t> cex{
+        tchecker::tck_reach::zg_history_aware::cex::concrete_counter_example(*graph)};
     if (cex->empty())
       throw std::runtime_error("Unable to compute a concrete counter example");
-    tchecker::tck_reach::zg_covreach::cex::dot_output(*os, *cex, sysdecl->name());
+    tchecker::tck_reach::zg_history_aware::cex::dot_output(*os, *cex, propertydecl->name());
   }
   else if ((certificate == CERTIFICATE_SYMBOLIC) && stats.reachable()) {
-    std::unique_ptr<tchecker::tck_reach::zg_covreach::cex::symbolic_cex_t> cex{
-        tchecker::tck_reach::zg_covreach::cex::symbolic_counter_example(*graph)};
+    std::unique_ptr<tchecker::tck_reach::zg_history_aware::cex::symbolic_cex_t> cex{
+        tchecker::tck_reach::zg_history_aware::cex::symbolic_counter_example(*graph)};
     if (cex->empty())
       throw std::runtime_error("Unable to compute a symbolic counter example");
-    tchecker::tck_reach::zg_covreach::cex::dot_output(*os, *cex, sysdecl->name());
+    tchecker::tck_reach::zg_history_aware::cex::dot_output(*os, *cex, propertydecl->name());
   }
+
+  if (pi_nodes.empty()) {
+    std::cout << "REACHABLE: " << "false" << std::endl;
+    std::cout << "TOTAL_RUNNING_TIME: " << running_time << std::endl;
+    std::cout << "TOTAL_VISITED_STATES: " << visited_states << std::endl;
+    std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition << std::endl;
+    std::cout << "BACKWARD_DES_STATES: N/A" << std::endl;
+    std::cout << "BACKWARD_REACH_STATES N/A" << std::endl;
+    return;
+  }
+
+  std::chrono::time_point<std::chrono::steady_clock> pi_start_time = std::chrono::steady_clock::now();
+  std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> reachable_waiting_list;
+  std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> reachable_visited_list;
+
+  auto [status, new_count] = backward_propagation(graph, pi_nodes, reachable_waiting_list, reachable_visited_list);
+
+  if (status) {
+    std::cout << "REACHABLE: " << status << std::endl;
+    std::cout << "TOTAL_RUNNING_TIME: " << running_time << std::endl;
+    std::cout << "TOTAL_VISITED_STATES: " << visited_states << std::endl;
+    std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition << std::endl;
+    std::cout << "BACKWARD_DES_STATES: " << new_count << std::endl;
+    std::cout << "BACKWARD_REACH_STATES N/A" << std::endl;
+    return;
+  }
+  backward_reachability(graph, reachable_waiting_list, reachable_visited_list);
+
+  std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
+  std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
+  running_time += pi_duration.count();
+
+  uint32_t nodes_count;
+  std::shared_ptr<tchecker::parsing::system_declaration_t> check_decl{
+      tchecker::tck_reach::graph_parser(input_file, env_file, propertydecl, graph, os, nodes_count)};
+  auto && [stats_final, graph_final] =
+      tchecker::tck_reach::zg_reach_compos::run(sysdecl, check_decl, labels, search_order, block_size, table_size);
+
+  // stats
+  std::map<std::string, std::string> m_final;
+  stats_final.attributes(m_final);
+  for (auto && [key, value] : m_final) {
+    if (key == "VISITED_STATES")
+      visited_states += std::stoll(value);
+    else if (key == "VISITED_TRANSITIONS")
+      visited_transition += std::stoll(value);
+    else if (key == "RUNNING_TIME_SECONDS")
+      running_time += std::stold(value);
+    else if (key == "REACHABLE")
+      reachable = value;
+  }
+
+  std::cout << "REACHABLE: " << reachable << std::endl;
+  std::cout << "TOTAL_RUNNING_TIME: " << running_time << std::endl;
+  std::cout << "TOTAL_VISITED_STATES: " << visited_states << std::endl;
+  std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition << std::endl;
+  std::cout << "BACKWARD_REACH_STATES " << nodes_count << std::endl;
 }
 
 /*!
@@ -318,8 +471,8 @@ int main(int argc, char * argv[])
       return EXIT_FAILURE;
     }
 
-    if ((certificate == CERTIFICATE_CONCRETE) && (algorithm != ALGO_COVREACH) && (algorithm != ALGO_REACH)) {
-      std::cerr << "Concrete counter-example is only available for algorithms covreach and reach" << std::endl;
+    if ((certificate == CERTIFICATE_CONCRETE) && (algorithm != ALGO_REACH)) {
+      std::cerr << "Concrete counter-example is only available for algorithm reach" << std::endl;
       return EXIT_FAILURE;
     }
 
@@ -331,6 +484,8 @@ int main(int argc, char * argv[])
     std::string input_file = (optindex == argc ? "" : argv[optindex]);
 
     std::shared_ptr<tchecker::parsing::system_declaration_t> sysdecl{load_system_declaration(input_file)};
+    std::shared_ptr<tchecker::parsing::system_declaration_t> propertydecl{load_system_declaration(property_file)};
+    std::shared_ptr<tchecker::parsing::system_declaration_t> envdecl{load_system_declaration(env_file)};
 
     if (tchecker::log_error_count() > 0)
       return EXIT_FAILURE;
@@ -352,11 +507,8 @@ int main(int argc, char * argv[])
     case ALGO_REACH:
       reach(sysdecl);
       break;
-    case ALGO_CONCUR19:
-      concur19(sysdecl);
-      break;
-    case ALGO_COVREACH:
-      covreach(sysdecl);
+    case ALGO_COMPOS:
+      compos(input_file, sysdecl, propertydecl, envdecl);
       break;
     default:
       throw std::runtime_error("No algorithm specified");

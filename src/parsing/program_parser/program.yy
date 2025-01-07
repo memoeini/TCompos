@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 %skeleton "lalr1.cc" // c++
@@ -26,11 +23,11 @@
   #include <string>
   #include <tuple>
   
-  #include "tchecker/basictypes.hh"
   #include "tchecker/expression/expression.hh"
   #include "tchecker/parsing/parsing.hh"
   #include "tchecker/statement/statement.hh"
   #include "tchecker/utils/log.hh"
+  #include "tchecker/basictypes.hh"
 }
 
 
@@ -86,7 +83,7 @@
     {
       return os;
     }
-    
+
     virtual tchecker::expression_t * do_clone() const
     {
       return new fake_var_expression_t();
@@ -108,7 +105,7 @@
     {
       return os;
     }
-    
+
     virtual tchecker::statement_t * do_clone() const
     {
       return new fake_statement_t();

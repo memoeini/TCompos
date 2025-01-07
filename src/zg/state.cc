@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #if BOOST_VERSION <= 106600
@@ -45,6 +42,11 @@ bool shared_equal_to(tchecker::zg::state_t const & s1, tchecker::zg::state_t con
   return tchecker::ta::shared_equal_to(s1, s2) && (s1.zone_ptr() == s2.zone_ptr());
 }
 
+bool shared_equal_to_incl_vector(tchecker::zg::state_t const & s1, tchecker::zg::state_t const & s2, const boost::dynamic_bitset<> & v1, const boost::dynamic_bitset<> & v2)
+{
+  return tchecker::ta::shared_equal_to(s1, s2) && (s1.zone_ptr() == s2.zone_ptr()) && (v1 == v2);
+}
+
 bool operator<=(tchecker::zg::state_t const & s1, tchecker::zg::state_t const & s2)
 {
   return tchecker::ta::operator==(s1, s2) && (s1.zone() <= s2.zone());
@@ -78,6 +80,16 @@ std::size_t shared_hash_value(tchecker::zg::state_t const & s)
 {
   std::size_t h = tchecker::ta::shared_hash_value(s);
   boost::hash_combine(h, s.zone_ptr());
+
+  return h;
+}
+
+std::size_t shared_hash_value_incl_vector(tchecker::zg::state_t const & s, boost::dynamic_bitset<> v)
+{
+  std::size_t h = tchecker::ta::shared_hash_value(s);
+  boost::hash_combine(h, s.zone_ptr());
+  boost::hash_combine(h, v);
+
   return h;
 }
 

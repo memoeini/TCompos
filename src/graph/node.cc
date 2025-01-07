@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #if BOOST_VERSION <= 106600
@@ -84,6 +81,8 @@ node_refzg_state_t::node_refzg_state_t(tchecker::refzg::state_sptr_t const & s) 
 
 node_refzg_state_t::node_refzg_state_t(tchecker::refzg::const_state_sptr_t const & s) : _state(s) {}
 
+node_reset_history::node_reset_history(const boost::dynamic_bitset<> rhv) : _reset_history_vector(rhv) {}
+node_reachability::node_reachability(bool status) : _is_reachable(status) {}
 } // namespace graph
 
 } // namespace tchecker

@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #include <cassert>
@@ -106,8 +103,14 @@ boost::dynamic_bitset<> system_t::labels(std::string const & labels) const
   std::vector<std::string> v;
   boost::split(v, labels, boost::is_any_of(","));
   for (std::string const & l : v) {
-    if (!this->is_label(l))
-      throw std::invalid_argument("Unknown label '" + l + "'");
+    if (!this->is_label(l)) {
+      if (l == "Pi") {
+        throw std::invalid_argument("Unknown label '" + l + "'");
+      } else {
+        throw std::invalid_argument("Unknown label '" + l + "'");
+      }
+    }
+
     s.set(this->label_id(l));
   }
   return s;

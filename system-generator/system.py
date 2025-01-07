@@ -1,8 +1,5 @@
 """
 Part of the TCompos project. See files AUTHORS and LICENSE for copyright details.
-This script separates a system into two parts (env and prop) ensuring no shared clocks in between.
-Invariants and also the prop automata should remain in the prop part.
-Automatas of these two subsystem are specified using env_automata and prop_automata.
 """
 
 import re
@@ -41,7 +38,7 @@ print("Prop automata: ", prop_automata)
 print("Env automata: ", env_automata)
 
 # Get the input automata code (this can be from a file or string)
-f = open("autosar", "r")
+f = open("input", "r")
 
 system_desc = {
     "system": None,

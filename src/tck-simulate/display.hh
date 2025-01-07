@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #ifndef TCHECKER_TCK_SIMULATE_DISPLAY_HH
@@ -17,6 +14,7 @@
 #include <ostream>
 #include <vector>
 
+#include "tchecker/config.hh"
 #include "tchecker/zg/state.hh"
 #include "tchecker/zg/transition.hh"
 #include "tchecker/zg/zg.hh"
@@ -125,6 +123,7 @@ private:
   std::shared_ptr<tchecker::zg::zg_t> _zg; /*!< Zone graph */
 };
 
+#if USE_BOOST_JSON
 /*!
  \class json_display_t
  \brief JSON display
@@ -185,13 +184,16 @@ private:
   std::ostream & _os;                      /*!< Output stream */
   std::shared_ptr<tchecker::zg::zg_t> _zg; /*!< Zone graph */
 };
+#endif
 
 /*!
  \brief Type of display
 */
 enum display_type_t {
   HUMAN_READABLE_DISPLAY = 0, /*!< Human readable display */
+#if USE_BOOST_JSON
   JSON_DISPLAY,               /*!< JSON display */
+#endif
 };
 
 /*!

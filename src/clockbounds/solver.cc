@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #include <cassert>
@@ -323,7 +320,7 @@ public:
   */
   virtual void visit(tchecker::typed_diagonal_clkconstr_expression_t const & expr)
   {
-    throw std::runtime_error("unsupported diagonal constraints");
+    // throw std::runtime_error("unsupported diagonal constraints");
   }
 
   // Other visitors on expressions

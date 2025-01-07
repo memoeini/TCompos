@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #include <vector>
@@ -98,7 +95,8 @@ tchecker::state_status_t next(tchecker::ta::system_t const & system,
                               tchecker::intrusive_shared_ptr_t<tchecker::shared_intval_t> const & intval,
                               tchecker::intrusive_shared_ptr_t<tchecker::shared_vedge_t> const & vedge,
                               tchecker::clock_constraint_container_t & src_invariant,
-                              tchecker::clock_constraint_container_t & guard, tchecker::clock_reset_container_t & reset,
+                              tchecker::clock_constraint_container_t & guard,
+                              tchecker::clock_reset_container_t & reset,
                               tchecker::clock_constraint_container_t & tgt_invariant,
                               tchecker::ta::outgoing_edges_value_t const & edges)
 {

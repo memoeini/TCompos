@@ -1,8 +1,5 @@
 /*
- * This file is a part of the TChecker project.
- *
  * See files AUTHORS and LICENSE for copyright details.
- *
  */
 
 #include <queue>
@@ -74,7 +71,8 @@ tchecker::state_status_t next(tchecker::ta::system_t const & system,
                               tchecker::intrusive_shared_ptr_t<tchecker::zg::shared_zone_t> const & zone,
                               tchecker::intrusive_shared_ptr_t<tchecker::shared_vedge_t> const & vedge,
                               tchecker::clock_constraint_container_t & src_invariant,
-                              tchecker::clock_constraint_container_t & guard, tchecker::clock_reset_container_t & reset,
+                              tchecker::clock_constraint_container_t & guard,
+                              tchecker::clock_reset_container_t & reset,
                               tchecker::clock_constraint_container_t & tgt_invariant, tchecker::zg::semantics_t & semantics,
                               tchecker::zg::extrapolation_t & extrapolation, tchecker::zg::outgoing_edges_value_t const & edges)
 {
@@ -224,7 +222,10 @@ void zg_t::initial(tchecker::zg::initial_value_t const & init_edge, std::vector<
 {
   tchecker::zg::state_sptr_t s = _state_allocator.construct();
   tchecker::zg::transition_sptr_t t = _transition_allocator.construct();
-  tchecker::state_status_t status = tchecker::zg::initial(*_system, *s, *t, *_semantics, *_extrapolation, init_edge);
+
+  tchecker::state_status_t status = tchecker::zg::initial(*_system, s->vloc_ptr(), s->intval_ptr(), s->zone_ptr(), t->vedge_ptr(), t->src_invariant_container(),
+                                                          *_semantics, *_extrapolation, init_edge);
+
   if (status & mask) {
     if (_sharing_type == tchecker::ts::SHARING) {
       share(s);
@@ -246,7 +247,10 @@ void zg_t::next(tchecker::zg::const_state_sptr_t const & s, tchecker::zg::outgoi
 {
   tchecker::zg::state_sptr_t nexts = _state_allocator.clone(*s);
   tchecker::zg::transition_sptr_t nextt = _transition_allocator.construct();
-  tchecker::state_status_t status = tchecker::zg::next(*_system, *nexts, *nextt, *_semantics, *_extrapolation, out_edge);
+
+  tchecker::state_status_t status = tchecker::zg::next(*_system, nexts->vloc_ptr(), nexts->intval_ptr(), nexts->zone_ptr(), nextt->vedge_ptr(), nextt->src_invariant_container(),
+                     nextt->guard_container(), nextt->reset_container(), nextt->tgt_invariant_container(), *_semantics, *_extrapolation, out_edge);
+
   if (status & mask) {
     if (_sharing_type == tchecker::ts::SHARING) {
       share(nexts);
@@ -269,7 +273,10 @@ void zg_t::final(final_value_t const & final_edge, std::vector<sst_t> & v, tchec
 {
   tchecker::zg::state_sptr_t s = _state_allocator.construct();
   tchecker::zg::transition_sptr_t t = _transition_allocator.construct();
-  tchecker::state_status_t status = tchecker::zg::final(*_system, *s, *t, *_semantics, *_extrapolation, final_edge);
+
+  tchecker::state_status_t status = tchecker::zg::final(*_system, s->vloc_ptr(), s->intval_ptr(), s->zone_ptr(), t->vedge_ptr(), t->src_invariant_container(),
+                      *_semantics, *_extrapolation, final_edge);
+
   if (status & mask) {
     if (_sharing_type == tchecker::ts::SHARING) {
       share(s);
@@ -294,7 +301,10 @@ void zg_t::prev(tchecker::zg::const_state_sptr_t const & s, incoming_edges_value
 {
   tchecker::zg::state_sptr_t prevs = _state_allocator.clone(*s);
   tchecker::zg::transition_sptr_t prevt = _transition_allocator.construct();
-  tchecker::state_status_t status = tchecker::zg::prev(*_system, *prevs, *prevt, *_semantics, *_extrapolation, in_edge);
+
+  tchecker::state_status_t status = tchecker::zg::prev(*_system, prevs->vloc_ptr(), prevs->intval_ptr(), prevs->zone_ptr(), prevt->vedge_ptr(), prevt->src_invariant_container(),
+                                                       prevt->guard_container(), prevt->reset_container(), prevt->tgt_invariant_container(), *_semantics, *_extrapolation, in_edge);
+
   if (status & mask) {
     if (_sharing_type == tchecker::ts::SHARING) {
       share(prevs);

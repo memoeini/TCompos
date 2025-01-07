@@ -7,7 +7,14 @@ set(Boost_USE_DEBUG_LIBS        OFF)  # ignore debug libs and
 set(Boost_USE_RELEASE_LIBS       ON)  # only find release libs
 set(Boost_USE_MULTITHREADED     OFF)
 set(Boost_USE_STATIC_RUNTIME    OFF)
-find_package(Boost REQUIRED COMPONENTS json)
+find_package(Boost OPTIONAL_COMPONENTS json)
+
+if(boost_json_DIR)
+  set(USE_BOOST_JSON 1)
+else()
+  message(NOTICE "*** JSON-based features are disabled")
+  set(USE_BOOST_JSON 0)
+endif()
 
 option(LIBTCHECKER_ENABLE_SHARED "Build TChecker shared library" OFF)
 
@@ -116,17 +123,25 @@ set_property(TARGET tck-liveness PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # Build tck-reach executable
 add_executable(tck-reach
-  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/concur19.hh
-  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/concur19.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/counter_example.hh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/counter_example_ha.hh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/parse-graph.hh
   ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/tck-reach.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-covreach.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-covreach.hh
   ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-reach.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-reach.hh)
+  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-reach.hh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-history-aware.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-history-aware.hh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-reach-compos.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/tck-reach/zg-reach-compos.hh
+)
 target_link_libraries(tck-reach libtchecker_static ${Boost_LIBRARIES})
 set_property(TARGET tck-reach PROPERTY CXX_STANDARD 17)
 set_property(TARGET tck-reach PROPERTY CXX_STANDARD_REQUIRED ON)
+
+#find_package(Z3 REQUIRED)
+include_directories("/usr/bin}")
+include_directories("/usr/include")
+link_directories("/usr/lib/")
 
 # Build tck-syntax executable
 add_executable(tck-syntax

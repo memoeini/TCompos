@@ -261,7 +261,7 @@ bool check_consistency(
   return true;
 }
 
-std::tuple<bool, int>
+std::tuple<bool, unsigned long long int, unsigned long long int, unsigned long long int>
 backward_propagation(const std::shared_ptr<tchecker::tck_reach::zg_history_aware::graph_t> & graph,
                      std::queue<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & pi_nodes,
                      std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & reachable_waiting_list,
@@ -269,10 +269,13 @@ backward_propagation(const std::shared_ptr<tchecker::tck_reach::zg_history_aware
 {
 
   const std::size_t number_of_clocks = graph->zg().system().as_system_system().clocks_count(tchecker::VK_FLATTENED);
-  int new_count = 0;
+  unsigned long long int new_count = 0;
+  unsigned long long int visited_states = 0;
+  unsigned long long int visited_transition = 0;
 
   const tchecker::system::system_t graph_system = graph->zg().system().as_system_system();
   while (!pi_nodes.empty()) {
+    visited_states += 1;
     tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t pi_node = pi_nodes.front();
     pi_nodes.pop();
     pi_node->update_reach_status(true);
@@ -281,6 +284,7 @@ backward_propagation(const std::shared_ptr<tchecker::tck_reach::zg_history_aware
 
     auto incoming_edges = graph->incoming_edges(pi_node);
     for (auto incoming_edge : graph->incoming_edges(pi_node)) {
+      visited_transition += 1;
       const auto edge = graph_system.edge(*incoming_edge->vedge().begin());
       const auto & event_name = graph_system.event_name(edge->event_id());
       auto src_node = graph->edge_src(incoming_edge);
@@ -296,7 +300,7 @@ backward_propagation(const std::shared_ptr<tchecker::tck_reach::zg_history_aware
             graph->remove_node(pi_node);
           }
           if (src_node->initial()) {
-            return std::make_tuple(true, new_count);
+            return std::make_tuple(true, new_count, visited_states, visited_transition);
           }
         }
         else {
@@ -314,19 +318,26 @@ backward_propagation(const std::shared_ptr<tchecker::tck_reach::zg_history_aware
     }
   }
 
-  return std::make_tuple(false, new_count);
+  return std::make_tuple(false, new_count, visited_states, visited_transition);
 }
 
-void backward_reachability(
+std::tuple<unsigned long long int, unsigned long long int> backward_reachability(
     const std::shared_ptr<tchecker::tck_reach::zg_history_aware::graph_t> & graph,
     const std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & reachable_waiting_list,
     std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> & reachable_visited_list)
 {
   std::queue<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> second_reachable_waiting_list;
 
+  unsigned long long int visited_states = 0;
+  unsigned long long int visited_transition = 0;
+
   for (const auto & node : reachable_waiting_list) {
+    visited_states += 1;
+
     auto incoming_edges = graph->incoming_edges(node);
     for (auto incoming_edge : incoming_edges) {
+      visited_transition += 1;
+
       auto src_node = graph->edge_src(incoming_edge);
       if (reachable_visited_list.insert(src_node).second) {
         second_reachable_waiting_list.push(src_node);
@@ -336,10 +347,14 @@ void backward_reachability(
   }
 
   while (!second_reachable_waiting_list.empty()) {
+    visited_states += 1;
+
     auto node = second_reachable_waiting_list.front();
     second_reachable_waiting_list.pop();
     auto incoming_edges = graph->incoming_edges(node);
     for (auto incoming_edge : incoming_edges) {
+      visited_transition += 1;
+
       auto src_node = graph->edge_src(incoming_edge);
       if (reachable_visited_list.insert(src_node).second) {
         second_reachable_waiting_list.push(src_node);
@@ -347,6 +362,8 @@ void backward_reachability(
       }
     }
   }
+
+  return std::make_tuple(visited_states, visited_transition);
 }
 
 void compos(const std::string & input_file, const std::shared_ptr<tchecker::parsing::system_declaration_t> & sysdecl,
@@ -356,14 +373,13 @@ void compos(const std::string & input_file, const std::shared_ptr<tchecker::pars
   tchecker::algorithms::reach::stats_t stats;
   std::shared_ptr<tchecker::tck_reach::zg_history_aware::graph_t> graph;
   std::queue<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> pi_nodes;
-  long long int visited_states = 0;
-  long long int visited_transition = 0;
-  long double running_time = 0;
+  unsigned long long int visited_states = 0;
+  unsigned long long int visited_transition = 0;
   long long int iteration_num = 1;
   bool early_termination = false;
   std::string reachable;
 
-  pi_nodes.empty();
+  std::chrono::time_point<std::chrono::steady_clock> pi_start_time = std::chrono::steady_clock::now();
   std::tie(stats, graph) = tchecker::tck_reach::zg_history_aware::run(
       propertydecl, envdecl, pi_nodes, early_termination, labels, search_order, block_size, table_size, iteration_num);
 
@@ -372,11 +388,9 @@ void compos(const std::string & input_file, const std::shared_ptr<tchecker::pars
   stats.attributes(m);
   for (auto && [key, value] : m) {
     if (key == "VISITED_STATES")
-      visited_states += std::stoll(value);
+      visited_states += std::stoull(value);
     else if (key == "VISITED_TRANSITIONS")
-      visited_transition += std::stoll(value);
-    else if (key == "RUNNING_TIME_SECONDS")
-      running_time += std::stold(value);
+      visited_transition += std::stoull(value);
     else if (key == "REACHABLE")
       reachable = value;
   }
@@ -400,8 +414,11 @@ void compos(const std::string & input_file, const std::shared_ptr<tchecker::pars
   }
 
   if (pi_nodes.empty()) {
+    std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
+
     std::cout << "REACHABLE: " << "false" << std::endl;
-    std::cout << "TOTAL_RUNNING_TIME: " << running_time << std::endl;
+    std::cout << "TOTAL_RUNNING_TIME: " << pi_duration.count() << std::endl;
     std::cout << "TOTAL_VISITED_STATES: " << visited_states << std::endl;
     std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition << std::endl;
     std::cout << "BACKWARD_DES_STATES: N/A" << std::endl;
@@ -409,26 +426,24 @@ void compos(const std::string & input_file, const std::shared_ptr<tchecker::pars
     return;
   }
 
-  std::chrono::time_point<std::chrono::steady_clock> pi_start_time = std::chrono::steady_clock::now();
   std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> reachable_waiting_list;
   std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> reachable_visited_list;
 
-  auto [status, new_count] = backward_propagation(graph, pi_nodes, reachable_waiting_list, reachable_visited_list);
+  auto [status, new_count, propagation_visited_states, propagation_visited_transitions] = backward_propagation(graph, pi_nodes, reachable_waiting_list, reachable_visited_list);
 
   if (status) {
+    std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
+
     std::cout << "REACHABLE: " << status << std::endl;
-    std::cout << "TOTAL_RUNNING_TIME: " << running_time << std::endl;
-    std::cout << "TOTAL_VISITED_STATES: " << visited_states << std::endl;
-    std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition << std::endl;
+    std::cout << "TOTAL_RUNNING_TIME: " << pi_duration.count() << std::endl;
+    std::cout << "TOTAL_VISITED_STATES: " << visited_states + propagation_visited_states << std::endl;
+    std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition + propagation_visited_transitions << std::endl;
     std::cout << "BACKWARD_DES_STATES: " << new_count << std::endl;
     std::cout << "BACKWARD_REACH_STATES N/A" << std::endl;
     return;
   }
-  backward_reachability(graph, reachable_waiting_list, reachable_visited_list);
-
-  std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
-  std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
-  running_time += pi_duration.count();
+  auto [reachability_visited_states, reachability_visited_transitions] = backward_reachability(graph, reachable_waiting_list, reachable_visited_list);
 
   uint32_t nodes_count;
   std::shared_ptr<tchecker::parsing::system_declaration_t> check_decl{
@@ -441,19 +456,20 @@ void compos(const std::string & input_file, const std::shared_ptr<tchecker::pars
   stats_final.attributes(m_final);
   for (auto && [key, value] : m_final) {
     if (key == "VISITED_STATES")
-      visited_states += std::stoll(value);
+      visited_states += std::stoull(value);
     else if (key == "VISITED_TRANSITIONS")
-      visited_transition += std::stoll(value);
-    else if (key == "RUNNING_TIME_SECONDS")
-      running_time += std::stold(value);
+      visited_transition += std::stoull(value);
     else if (key == "REACHABLE")
       reachable = value;
   }
 
+  std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
+  std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
+
   std::cout << "REACHABLE: " << reachable << std::endl;
-  std::cout << "TOTAL_RUNNING_TIME: " << running_time << std::endl;
-  std::cout << "TOTAL_VISITED_STATES: " << visited_states << std::endl;
-  std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition << std::endl;
+  std::cout << "TOTAL_RUNNING_TIME: " << pi_duration.count() << std::endl;
+  std::cout << "TOTAL_VISITED_STATES: " << visited_states + propagation_visited_states + reachability_visited_states << std::endl;
+  std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition + propagation_visited_transitions + reachability_visited_transitions << std::endl;
   std::cout << "BACKWARD_REACH_STATES " << nodes_count << std::endl;
 }
 

@@ -38,7 +38,7 @@ print("Prop automata: ", prop_automata)
 print("Env automata: ", env_automata)
 
 # Get the input automata code (this can be from a file or string)
-f = open("input", "r")
+f = open("../../examples/AUTOSAR-1", "r")
 
 system_desc = {
     "system": None,

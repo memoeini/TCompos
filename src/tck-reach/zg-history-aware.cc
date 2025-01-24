@@ -219,10 +219,10 @@ run(tchecker::zg_ha::zg_t & zg, std::shared_ptr<tchecker::ta_ha::system_t const>
       node->update_reach_status(true);
       final_nodes_container.push(node);
       count++;
-      // if (count == iteration_num) {      // TODO
-      //   early_termination = true;
-      //   break;
-      // }
+      if (count == iteration_num) {      // TODO
+      early_termination = true;
+      break;
+      }
     }
 
     auto src_reset_history = node->reset_history_vector();

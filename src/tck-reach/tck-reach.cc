@@ -42,10 +42,11 @@ static struct option long_options[] = {{"algorithm", required_argument, 0, 'a'},
                                            'P',
                                        },
                                        {"env-file", required_argument, 0, 'E'},
+                                       {"iterative", no_argument, 0, 'i'},
                                        {"merge-flag", no_argument, 0, 'm'},
                                        {0, 0, 0, 0}};
 
-static char const * const options = (char *)"a:C:hl:o:s:P:E:m:";
+static char const * const options = (char *)"a:C:hl:o:s:P:E:m:i";
 
 /*!
   \brief Display usage
@@ -57,11 +58,11 @@ void usage(char * progname)
   std::cerr << "   -a algorithm  reachability algorithm" << std::endl;
   std::cerr << "          reach      standard reachability algorithm over the zone graph" << std::endl;
   std::cerr << "          compos   compositional reachability algorithm over the history aware zone graph" << std::endl;
-  std::cerr << "   -C type       type of certificate" << std::endl;
+  std::cerr << "   -C type       type of certificate (only for reach at the moment)" << std::endl;
   std::cerr << "          none       no certificate (default)" << std::endl;
   std::cerr << "          graph      graph of explored state-space" << std::endl;
   std::cerr << "          symbolic   symbolic run to a state with searched labels if any" << std::endl;
-  std::cerr << "          concrete   concrete run to a state with searched labels if any (only for reach currently)"
+  std::cerr << "          concrete   concrete run to a state with searched labels if any"
             << std::endl;
   std::cerr << "   -h            help" << std::endl;
   std::cerr << "   -l l1,l2,...  comma-separated list of searched labels" << std::endl;
@@ -96,6 +97,7 @@ static std::size_t block_size = 10000;                    /*!< Size of allocated
 static std::size_t table_size = 65536;                    /*!< Size of hash tables */
 static std::string property_file = "";
 static std::string env_file = "";
+static bool early_enabled = false;
 static bool merge_flag = false;
 
 /*!
@@ -129,6 +131,9 @@ int parse_command_line(int argc, char * argv[])
         break;
       case 'E':
         env_file = optarg;
+        break;
+      case 'i':
+        early_enabled = true;
         break;
       case 'a':
         if (strcmp(optarg, "reach") == 0)
@@ -373,104 +378,132 @@ void compos(const std::string & input_file, const std::shared_ptr<tchecker::pars
   tchecker::algorithms::reach::stats_t stats;
   std::shared_ptr<tchecker::tck_reach::zg_history_aware::graph_t> graph;
   std::queue<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> pi_nodes;
-  unsigned long long int visited_states = 0;
-  unsigned long long int visited_transition = 0;
-  long long int iteration_num = 1;
+  unsigned long long int cumulative_visited_states = 0;
+  unsigned long long int cumulative_visited_transition = 0;
   bool early_termination = false;
+  long long int iteration_num;
   std::string reachable;
 
+  if (early_enabled) {
+    iteration_num = 1;
+  } else {
+    iteration_num = -1;
+  }
+
   std::chrono::time_point<std::chrono::steady_clock> pi_start_time = std::chrono::steady_clock::now();
-  std::tie(stats, graph) = tchecker::tck_reach::zg_history_aware::run(
-      propertydecl, envdecl, pi_nodes, early_termination, labels, search_order, block_size, table_size, iteration_num);
 
-  // stats
-  std::map<std::string, std::string> m;
-  stats.attributes(m);
-  for (auto && [key, value] : m) {
-    if (key == "VISITED_STATES")
-      visited_states += std::stoull(value);
-    else if (key == "VISITED_TRANSITIONS")
-      visited_transition += std::stoull(value);
-    else if (key == "REACHABLE")
-      reachable = value;
-  }
+  do {
 
-  // certificate
-  if (certificate == CERTIFICATE_GRAPH)
-    tchecker::tck_reach::zg_history_aware::dot_output(*os, *graph, propertydecl->name());
-  else if ((certificate == CERTIFICATE_CONCRETE) && stats.reachable()) {
-    std::unique_ptr<tchecker::tck_reach::zg_history_aware::cex::concrete_cex_t> cex{
-        tchecker::tck_reach::zg_history_aware::cex::concrete_counter_example(*graph)};
-    if (cex->empty())
-      throw std::runtime_error("Unable to compute a concrete counter example");
-    tchecker::tck_reach::zg_history_aware::cex::dot_output(*os, *cex, propertydecl->name());
-  }
-  else if ((certificate == CERTIFICATE_SYMBOLIC) && stats.reachable()) {
-    std::unique_ptr<tchecker::tck_reach::zg_history_aware::cex::symbolic_cex_t> cex{
-        tchecker::tck_reach::zg_history_aware::cex::symbolic_counter_example(*graph)};
-    if (cex->empty())
-      throw std::runtime_error("Unable to compute a symbolic counter example");
-    tchecker::tck_reach::zg_history_aware::cex::dot_output(*os, *cex, propertydecl->name());
-  }
+    early_termination = false;
 
-  if (pi_nodes.empty()) {
-    std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
-    std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
+    std::tie(stats, graph) = tchecker::tck_reach::zg_history_aware::run(
+        propertydecl, envdecl, pi_nodes, early_termination, labels, search_order, block_size, table_size, iteration_num);
 
-    std::cout << "REACHABLE: " << "false" << std::endl;
-    std::cout << "TOTAL_RUNNING_TIME: " << pi_duration.count() << std::endl;
-    std::cout << "TOTAL_VISITED_STATES: " << visited_states << std::endl;
-    std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition << std::endl;
-    std::cout << "BACKWARD_DES_STATES: N/A" << std::endl;
-    std::cout << "BACKWARD_REACH_STATES N/A" << std::endl;
-    return;
-  }
+    // stats
+    std::map<std::string, std::string> m;
+    stats.attributes(m);
+    for (auto && [key, value] : m) {
+      if (key == "VISITED_STATES")
+        cumulative_visited_states += std::stoull(value);
+      else if (key == "VISITED_TRANSITIONS")
+        cumulative_visited_transition += std::stoull(value);
+      else if (key == "REACHABLE")
+        reachable = value;
+    }
 
-  std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> reachable_waiting_list;
-  std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> reachable_visited_list;
+    // certificate
+    if (certificate == CERTIFICATE_GRAPH)
+      tchecker::tck_reach::zg_history_aware::dot_output(*os, *graph, propertydecl->name());
+    else if ((certificate == CERTIFICATE_CONCRETE) && stats.reachable()) {
+      std::unique_ptr<tchecker::tck_reach::zg_history_aware::cex::concrete_cex_t> cex{
+          tchecker::tck_reach::zg_history_aware::cex::concrete_counter_example(*graph)};
+      if (cex->empty())
+        throw std::runtime_error("Unable to compute a concrete counter example");
+      tchecker::tck_reach::zg_history_aware::cex::dot_output(*os, *cex, propertydecl->name());
+    }
+    else if ((certificate == CERTIFICATE_SYMBOLIC) && stats.reachable()) {
+      std::unique_ptr<tchecker::tck_reach::zg_history_aware::cex::symbolic_cex_t> cex{
+          tchecker::tck_reach::zg_history_aware::cex::symbolic_counter_example(*graph)};
+      if (cex->empty())
+        throw std::runtime_error("Unable to compute a symbolic counter example");
+      tchecker::tck_reach::zg_history_aware::cex::dot_output(*os, *cex, propertydecl->name());
+    }
 
-  auto [status, new_count, propagation_visited_states, propagation_visited_transitions] = backward_propagation(graph, pi_nodes, reachable_waiting_list, reachable_visited_list);
+    if (pi_nodes.empty()) {
+      std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
+      std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
 
-  if (status) {
-    std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
-    std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
+      std::cout << "REACHABLE: " << "false" << std::endl;
+      std::cout << "TOTAL_RUNNING_TIME: " << pi_duration.count() << std::endl;
+      std::cout << "TOTAL_VISITED_STATES: " << cumulative_visited_states << std::endl;
+      std::cout << "TOTAL_VISITED_TRANSITIONS: " << cumulative_visited_transition << std::endl;
+      std::cout << "BACKWARD_DES_STATES: N/A" << std::endl;
+      std::cout << "BACKWARD_REACH_STATES N/A" << std::endl;
+      return;
+    }
 
-    std::cout << "REACHABLE: " << status << std::endl;
-    std::cout << "TOTAL_RUNNING_TIME: " << pi_duration.count() << std::endl;
-    std::cout << "TOTAL_VISITED_STATES: " << visited_states + propagation_visited_states << std::endl;
-    std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition + propagation_visited_transitions << std::endl;
-    std::cout << "BACKWARD_DES_STATES: " << new_count << std::endl;
-    std::cout << "BACKWARD_REACH_STATES N/A" << std::endl;
-    return;
-  }
-  auto [reachability_visited_states, reachability_visited_transitions] = backward_reachability(graph, reachable_waiting_list, reachable_visited_list);
+    std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> reachable_waiting_list;
+    std::unordered_set<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t> reachable_visited_list;
 
-  uint32_t nodes_count;
-  std::shared_ptr<tchecker::parsing::system_declaration_t> check_decl{
-      tchecker::tck_reach::graph_parser(input_file, env_file, propertydecl, graph, os, nodes_count)};
-  auto && [stats_final, graph_final] =
-      tchecker::tck_reach::zg_reach_compos::run(sysdecl, check_decl, labels, search_order, block_size, table_size);
+    auto [status, new_count, propagation_visited_states, propagation_visited_transitions] = backward_propagation(graph, pi_nodes, reachable_waiting_list, reachable_visited_list);
 
-  // stats
-  std::map<std::string, std::string> m_final;
-  stats_final.attributes(m_final);
-  for (auto && [key, value] : m_final) {
-    if (key == "VISITED_STATES")
-      visited_states += std::stoull(value);
-    else if (key == "VISITED_TRANSITIONS")
-      visited_transition += std::stoull(value);
-    else if (key == "REACHABLE")
-      reachable = value;
-  }
+    cumulative_visited_states += propagation_visited_states;
+    cumulative_visited_transition += propagation_visited_transitions;
+
+    if (status) {
+      std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
+      std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
+
+      std::cout << "REACHABLE: " << status << std::endl;
+      std::cout << "TOTAL_RUNNING_TIME: " << pi_duration.count() << std::endl;
+      std::cout << "TOTAL_VISITED_STATES: " << cumulative_visited_states << std::endl;
+      std::cout << "TOTAL_VISITED_TRANSITIONS: " << cumulative_visited_transition << std::endl;
+      std::cout << "BACKWARD_DES_STATES: " << new_count << std::endl;
+      std::cout << "BACKWARD_REACH_STATES N/A" << std::endl;
+      return;
+    }
+    auto [reachability_visited_states, reachability_visited_transitions] = backward_reachability(graph, reachable_waiting_list, reachable_visited_list);
+
+    cumulative_visited_states += reachability_visited_states;
+    cumulative_visited_transition += reachability_visited_transitions;
+
+    uint32_t nodes_count;
+    std::shared_ptr<tchecker::parsing::system_declaration_t> check_decl{
+        tchecker::tck_reach::graph_parser(input_file, env_file, propertydecl, graph, os, nodes_count)};
+    auto && [stats_final, graph_final] =
+        tchecker::tck_reach::zg_reach_compos::run(sysdecl, check_decl, labels, search_order, block_size, table_size);
+
+    // stats
+    std::map<std::string, std::string> m_final;
+    stats_final.attributes(m_final);
+    for (auto && [key, value] : m_final) {
+      if (key == "VISITED_STATES")
+        cumulative_visited_states += std::stoull(value);
+      else if (key == "VISITED_TRANSITIONS")
+        cumulative_visited_transition += std::stoull(value);
+      else if (key == "REACHABLE")
+        reachable = value;
+    }
+
+    if (reachable == "true") {
+      break;
+    }
+
+    // clear Pi nodes
+    std::queue<tchecker::tck_reach::zg_history_aware::graph_t::node_sptr_t>().swap(pi_nodes);
+
+    // set the next iteration number
+    iteration_num = -1;         // one iteration is enough
+
+  } while (early_termination);
 
   std::chrono::time_point<std::chrono::steady_clock> pi_end_time = std::chrono::steady_clock::now();
   std::chrono::duration<double> pi_duration = pi_end_time - pi_start_time;
 
   std::cout << "REACHABLE: " << reachable << std::endl;
   std::cout << "TOTAL_RUNNING_TIME: " << pi_duration.count() << std::endl;
-  std::cout << "TOTAL_VISITED_STATES: " << visited_states + propagation_visited_states + reachability_visited_states << std::endl;
-  std::cout << "TOTAL_VISITED_TRANSITIONS: " << visited_transition + propagation_visited_transitions + reachability_visited_transitions << std::endl;
-  std::cout << "BACKWARD_REACH_STATES " << nodes_count << std::endl;
+  std::cout << "TOTAL_VISITED_STATES: " << cumulative_visited_states << std::endl;
+  std::cout << "TOTAL_VISITED_TRANSITIONS: " << cumulative_visited_transition << std::endl;
 }
 
 /*!

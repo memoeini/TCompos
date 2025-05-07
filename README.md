@@ -94,7 +94,8 @@ You may optionally add `-i` to enable **iterative execution**:
 ## License
 MIT License
 
-Copyright (c) 2024 Mehran Moeini Jam and Hamed Kalantari
+Copyright (c) 2024 Mehran Moeini Jam and Hamed Kalantari  
+
 Copyright (c) 2019 Bordeaux INP, CNRS
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

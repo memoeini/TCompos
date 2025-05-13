@@ -78,7 +78,7 @@ Running the system generator on an input file `x` will produce the following:
 Use the following command to verify the system:
 
 ```bash
-/path/to/x_orig -P /path/to/x_prop -E /path/to/x_env -a [algo] -l Pi
+tck-reach /path/to/x_orig -P /path/to/x_prop -E /path/to/x_env -a [algo] -l Pi
 ```
 
 Replace `[algo]` with one of the following:
@@ -89,7 +89,7 @@ Replace `[algo]` with one of the following:
 You may optionally add `-i` to enable **iterative execution**:
 
 ```bash
-/path/to/x_orig -P /path/to/x_prop -E /path/to/x_env -a compos -l Pi -i
+tck-reach /path/to/x_orig -P /path/to/x_prop -E /path/to/x_env -a compos -l Pi -i
 ```
 ## License
 MIT License

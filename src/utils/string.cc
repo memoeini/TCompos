@@ -1,0 +1,24 @@
+/*
+ * This file is part of the TCompos tool, which builds upon the TChecker framework.
+ *
+ * See files AUTHORS and LICENSE for copyright details.
+ *
+ */
+
+#include <sstream>
+
+#include "tchecker/utils/string.hh"
+
+namespace tchecker {
+
+std::vector<std::string> split(std::string const & s, char d)
+{
+  std::stringstream sstream(s);
+  std::vector<std::string> v;
+  std::string substr;
+  while (std::getline(sstream, substr, d))
+    v.push_back(substr);
+  return v;
+}
+
+} // namespace tchecker

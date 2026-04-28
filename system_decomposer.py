@@ -83,7 +83,7 @@ env_event_set = set()
 env_clock_set = set()
 
 
-# extracts and tokenize different parts (operators, variables, numbers) of an expression (i.e. c += 1)
+# extract and tokenize
 def extract_parts(expression):
     # regular expression to match different components of an exp
     pattern = r"(\w+|[+\-*/%=<>!&|^]+|\d+|\S)"

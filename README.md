@@ -32,13 +32,13 @@ To build and install, follow the steps below:
     * **For Linux:**
 
       ```
-      cmake ../tchecker -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/install
+      cmake ../TCompos -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/install
       ```
 
     * **For macOS:**
 
       ```
-      cmake ../tchecker -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/install -DCMAKE_PREFIX_PATH=/path/to/bison
+      cmake ../TCompos -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/install -DCMAKE_PREFIX_PATH=/path/to/bison
       ```
 
 4. **Compile and Install**

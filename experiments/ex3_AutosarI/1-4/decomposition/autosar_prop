@@ -1,0 +1,123 @@
+system:AUTOSAR
+
+clock:1:x
+clock:1:xt
+clock:1:x1
+clock:1:x4
+
+
+event:write3
+event:write2_4
+event:write1
+event:runnable6_start
+event:runnable2_start
+event:runnable5_finish
+event:runnable5_start
+event:_count4Under
+event:_task_start
+event:_runnable4_start
+event:_runnable1_start
+event:_count4Plus
+event:_count4Minus
+event:_runnable4_finish
+event:_write4
+event:_read4
+event:_count4Over
+event:_runnable1_tau
+
+process:schedule
+location:schedule:s1{invariant:x<=5:initial:}
+location:schedule:s2{invariant:x<=10}
+location:schedule:s3{invariant:x<=10}
+location:schedule:s4{invariant:x<=10}
+edge:schedule:s1:s2:_runnable1_start{do:x=0:provided:(x <= 5)}
+edge:schedule:s2:s1:_task_start{do:x=0:provided:(x == 10)}
+edge:schedule:s2:s3:_runnable1_start{do:x=0:provided:(x <= 10)}
+edge:schedule:s3:s4:_runnable1_start{do:x=0:provided:(x <= 5)}
+edge:schedule:s3:s1:_task_start{do:x=0:provided:(x == 10)}
+edge:schedule:s4:s1:_task_start{do:x=0:provided:(x == 10)}
+
+process:runnable1
+location:runnable1:passive{initial:}
+location:runnable1:implicR{}
+location:runnable1:active{}
+location:runnable1:write{}
+edge:runnable1:passive:implicR:_runnable1_start{do:x1=0}
+edge:runnable1:implicR:active:_write4{do:x1=0}
+edge:runnable1:active:write:write1{do:x1=0:provided:(x1 <= 4)}
+edge:runnable1:write:active:runnable2_start{do:x1=0:provided:(x1 <= 2)}
+edge:runnable1:active:passive:_runnable1_tau{do:x1=0:provided:(x1 >= 2)}
+
+process:runnable4
+location:runnable4:passive{initial:}
+location:runnable4:implicR{}
+location:runnable4:active{}
+location:runnable4:write{}
+location:runnable4:non_deter{}
+edge:runnable4:passive:implicR:_runnable4_start{do:x4=0}
+edge:runnable4:implicR:active:_read4{do:x4=0:provided:(x4 >= 3)}
+edge:runnable4:implicR:non_deter:_read4{do:x4=0:provided:(x4 <= 5)}
+edge:runnable4:non_deter:active:write2_4{do:x4=0:provided:(x4 <= 1)}
+edge:runnable4:active:write:write3{provided:(x4 <= 4)}
+edge:runnable4:write:passive:_runnable4_finish{}
+
+process:task
+location:task:s1{initial:}
+location:task:s2{}
+location:task:s3{}
+location:task:s4{}
+location:task:s5{}
+location:task:s6{}
+edge:task:s1:s2:_task_start{do:xt=0}
+edge:task:s2:s3:_runnable4_start{do:xt=0:provided:(xt <= 1)}
+edge:task:s3:s4:_runnable4_finish{}
+edge:task:s4:s5:runnable5_start{do:xt=0:provided:(xt <= 2)}
+edge:task:s5:s6:runnable5_finish{}
+edge:task:s6:s1:runnable6_start{}
+
+process:prop
+location:prop:initial{initial:}
+location:prop:pi{labels:Pi}
+edge:prop:initial:initial:_count4Plus{}
+edge:prop:initial:initial:_count4Minus{}
+edge:prop:initial:pi:_count4Over{}
+edge:prop:initial:pi:_count4Under{}
+
+process:buffer4
+location:buffer4:idle{initial:}
+location:buffer4:counterUp{}
+location:buffer4:counterDown{}
+edge:buffer4:idle:counterDown:_read4{}
+edge:buffer4:idle:counterUp:_write4{}
+edge:buffer4:counterUp:idle:_count4Plus{}
+edge:buffer4:counterUp:idle:_count4Over{}
+edge:buffer4:counterDown:idle:_count4Minus{}
+edge:buffer4:counterDown:idle:_count4Under{}
+
+process:count4
+location:count4:c4_under{}
+location:count4:c4_0{initial:}
+location:count4:c4_1{}
+location:count4:c4_2{}
+location:count4:c4_3{}
+location:count4:c4_over{}
+edge:count4:c4_0:c4_1:_count4Plus{}
+edge:count4:c4_1:c4_2:_count4Plus{}
+edge:count4:c4_2:c4_3:_count4Plus{}
+edge:count4:c4_3:c4_over:_count4Over{}
+edge:count4:c4_0:c4_under:_count4Under{}
+edge:count4:c4_1:c4_0:_count4Minus{}
+edge:count4:c4_2:c4_1:_count4Minus{}
+edge:count4:c4_3:c4_2:_count4Minus{}
+
+
+sync:buffer4@_count4Plus:count4@_count4Plus:prop@_count4Plus
+sync:buffer4@_count4Minus:count4@_count4Minus:prop@_count4Minus
+sync:buffer4@_count4Over:count4@_count4Over:prop@_count4Over
+sync:buffer4@_count4Under:count4@_count4Under:prop@_count4Under
+sync:buffer4@_read4:runnable4@_read4
+sync:buffer4@_write4:runnable1@_write4
+sync:task@_runnable4_start:runnable4@_runnable4_start
+sync:task@_runnable4_finish:runnable4@_runnable4_finish
+sync:schedule@_task_start:task@_task_start
+sync:schedule@_runnable1_start:runnable1@_runnable1_start

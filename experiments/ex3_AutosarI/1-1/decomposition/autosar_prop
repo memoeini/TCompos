@@ -1,0 +1,100 @@
+system:AUTOSAR
+
+clock:1:x1
+clock:1:x
+clock:1:x2
+
+
+event:write2_2
+event:task_start
+event:runnable3_start
+event:write4
+event:_runnable1_start
+event:_read1
+event:_runnable2_start
+event:_count1Under
+event:_runnable1_tau
+event:_write1
+event:_count1Minus
+event:_count1Over
+event:_runnable2_tau
+event:_count1Plus
+
+process:schedule
+location:schedule:s1{invariant:x<=5:initial:}
+location:schedule:s2{invariant:x<=10}
+location:schedule:s3{invariant:x<=10}
+location:schedule:s4{invariant:x<=10}
+edge:schedule:s1:s2:_runnable1_start{do:x=0:provided:(x <= 5)}
+edge:schedule:s2:s1:task_start{do:x=0:provided:(x == 10)}
+edge:schedule:s2:s3:_runnable1_start{do:x=0:provided:(x <= 10)}
+edge:schedule:s3:s4:_runnable1_start{do:x=0:provided:(x <= 5)}
+edge:schedule:s3:s1:task_start{do:x=0:provided:(x == 10)}
+edge:schedule:s4:s1:task_start{do:x=0:provided:(x == 10)}
+
+process:buffer1
+location:buffer1:idle{initial:}
+location:buffer1:counterUp{}
+location:buffer1:counterDown{}
+edge:buffer1:idle:counterDown:_read1{}
+edge:buffer1:idle:counterUp:_write1{}
+edge:buffer1:counterUp:idle:_count1Plus{}
+edge:buffer1:counterUp:idle:_count1Over{}
+edge:buffer1:counterDown:idle:_count1Minus{}
+edge:buffer1:counterDown:idle:_count1Under{}
+
+process:count1
+location:count1:c1_under{}
+location:count1:c1_0{initial:}
+location:count1:c1_1{}
+location:count1:c1_2{}
+location:count1:c1_3{}
+location:count1:c1_over{}
+edge:count1:c1_0:c1_1:_count1Plus{}
+edge:count1:c1_1:c1_2:_count1Plus{}
+edge:count1:c1_2:c1_3:_count1Plus{}
+edge:count1:c1_3:c1_over:_count1Over{}
+edge:count1:c1_0:c1_under:_count1Under{}
+edge:count1:c1_1:c1_0:_count1Minus{}
+edge:count1:c1_2:c1_1:_count1Minus{}
+edge:count1:c1_3:c1_2:_count1Minus{}
+
+process:runnable1
+location:runnable1:passive{initial:}
+location:runnable1:implicR{}
+location:runnable1:active{}
+location:runnable1:write{}
+edge:runnable1:passive:implicR:_runnable1_start{do:x1=0}
+edge:runnable1:implicR:active:write4{do:x1=0}
+edge:runnable1:active:write:_write1{do:x1=0:provided:(x1 <= 4)}
+edge:runnable1:write:active:_runnable2_start{do:x1=0:provided:(x1 <= 2)}
+edge:runnable1:active:passive:_runnable1_tau{do:x1=0:provided:(x1 >= 2)}
+
+process:runnable2
+location:runnable2:passive{initial:}
+location:runnable2:implicR{}
+location:runnable2:active{}
+location:runnable2:write{}
+edge:runnable2:passive:implicR:_runnable2_start{do:x2=0}
+edge:runnable2:implicR:active:_read1{do:x2=0}
+edge:runnable2:active:write:write2_2{do:x2=0:provided:(x2 <= 4)}
+edge:runnable2:write:active:runnable3_start{do:x2=0:provided:(x2 <= 4)}
+edge:runnable2:active:passive:_runnable2_tau{do:x2=0:provided:(x2 >= 2)}
+
+process:prop
+location:prop:initial{initial:}
+location:prop:pi{labels:Pi}
+edge:prop:initial:initial:_count1Plus{}
+edge:prop:initial:initial:_count1Minus{}
+edge:prop:initial:pi:_count1Over{}
+edge:prop:initial:pi:_count1Under{}
+
+
+sync:buffer1@_count1Plus:count1@_count1Plus:prop@_count1Plus
+sync:buffer1@_count1Minus:count1@_count1Minus:prop@_count1Minus
+sync:buffer1@_count1Over:count1@_count1Over:prop@_count1Over
+sync:buffer1@_count1Under:count1@_count1Under:prop@_count1Under
+sync:buffer1@_write1:runnable1@_write1
+sync:buffer1@_read1:runnable2@_read1
+sync:runnable1@_runnable2_start:runnable2@_runnable2_start
+sync:schedule@_runnable1_start:runnable1@_runnable1_start

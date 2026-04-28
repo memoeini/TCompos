@@ -1,0 +1,83 @@
+system:AUTOSAR
+
+clock:1:x
+clock:1:xp
+clock:1:x3
+
+
+event:read2
+event:task3_start
+event:read3_3
+event:task4_start
+event:task1_start
+event:runnable4_start_2
+event:write2_1
+event:runnable4_finish_2
+event:write2_4
+event:write2_2
+event:_runnable3_start
+event:_task2_start
+event:_tau_task2
+event:_no_match
+event:_tau_runnable3
+event:_runnable3_finish
+
+process:schedule
+location:schedule:s1{invariant:x<=20:initial:}
+location:schedule:s2{invariant:x<=30}
+location:schedule:s3{invariant:x<=40}
+location:schedule:s4{invariant:x<=45}
+location:schedule:s5{invariant:x<=50}
+location:schedule:s6{invariant:x<=60}
+edge:schedule:s1:s2:task1_start{provided:(x == 20)}
+edge:schedule:s2:s3:_task2_start{provided:(x == 30)}
+edge:schedule:s3:s4:task1_start{provided:(x == 40)}
+edge:schedule:s4:s5:task3_start{provided:(x == 45)}
+edge:schedule:s5:s6:task4_start{provided:(x == 50)}
+edge:schedule:s6:s1:_task2_start{do:x=0:provided:(x == 60)}
+
+process:runnable3
+location:runnable3:passive{initial:}
+location:runnable3:implicR{}
+location:runnable3:active{}
+location:runnable3:active1{}
+location:runnable3:implicW{}
+edge:runnable3:passive:implicR:_runnable3_start{do:x3=0}
+edge:runnable3:implicR:active:_tau_runnable3{}
+edge:runnable3:active:active1:read3_3{do:x3=0:provided:(x3 >= 20)}
+edge:runnable3:active1:implicW:read2{provided:(x3 >= 3)}
+edge:runnable3:implicW:passive:_runnable3_finish{}
+
+process:task2
+location:task2:s1{initial:}
+location:task2:s2{}
+location:task2:s3{}
+location:task2:s4{}
+location:task2:s5{}
+location:task2:s6{}
+edge:task2:s1:s2:_task2_start{}
+edge:task2:s2:s3:runnable4_start_2{}
+edge:task2:s3:s4:runnable4_finish_2{}
+edge:task2:s4:s5:_runnable3_start{}
+edge:task2:s5:s6:_runnable3_finish{}
+edge:task2:s6:s1:_tau_task2{}
+
+process:prop2
+location:prop2:initial{initial:}
+location:prop2:written{}
+location:prop2:pi{labels:Pi}
+edge:prop2:initial:initial:read2{}
+edge:prop2:initial:written:write2_1{do:xp=0}
+edge:prop2:initial:written:write2_2{do:xp=0}
+edge:prop2:initial:written:write2_4{do:xp=0}
+edge:prop2:written:initial:read2{}
+edge:prop2:written:written:write2_1{}
+edge:prop2:written:written:write2_2{}
+edge:prop2:written:written:write2_4{}
+edge:prop2:written:pi:_no_match{provided:(xp >= 45)}
+
+
+sync:runnable3@read2:prop2@read2
+sync:task2@_runnable3_start:runnable3@_runnable3_start
+sync:task2@_runnable3_finish:runnable3@_runnable3_finish
+sync:schedule@_task2_start:task2@_task2_start

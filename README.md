@@ -56,7 +56,7 @@ To analyze your system using TCompos, follow the steps below to decompose it and
 
 1. **Decompose Your System**
 
-Use the `system-generator/system.py` script to split your system into two parts:
+Use the `system_decomposer.py` script to split your system into two parts:
 
 * **Open system** (includes the property automaton)
 * **Environment**

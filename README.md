@@ -1,5 +1,7 @@
 ## Description
-TCompos is a tool for verifying the correctness of timed systems modeled as networks of timed automata. Designed for timed safety properties, the tool introduces a new compositional framework based on assume-guarantee reasoning. TCompos builds upon the tool [TChecker](https://github.com/ticktac-project/tchecker) and leverages both forward and backward analysis techniques. The approach requires a decomposition of the network into an open-system component and an environment component. This modular view allows it to reason about each part (almost) in isolation before analyzing their combined behavior together. This enables considerable reductions in the size of the state space, allowing the algorithm not only to establish system correctness but also to identify property violations in faulty system models early in the analysis.
+TCompos is a tool for verifying the correctness of timed systems modeled as networks of timed automata. Designed for timed safety properties, the tool introduces a new compositional framework based on assume-guarantee reasoning. 
+
+TCompos builds upon the tool [TChecker](https://github.com/ticktac-project/tchecker) and leverages both forward and backward analysis techniques. The approach requires a decomposition of the network into an open-system component and an environment component. This modular view allows it to reason about each part (almost) in isolation before analyzing their combined behavior together. This enables considerable reductions in the size of the state space, allowing the algorithm not only to establish system correctness but also to identify property violations in faulty system models early in the analysis.
 
 ## Installation
 
@@ -12,10 +14,10 @@ The requirements are the same as those specified for [TChecker](https://github.c
 
 The command below will install the majority of the required packages:
    ```
-   sudo apt-get update && sudo apt-get install -y build-essential gcc g++ git cmake bison flex doxygen graphviz libboost-all-dev
+   sudo apt-get update && sudo apt-get install -y build-essential gcc g++ git cmake bison flex doxygen graphviz python3 libboost-all-dev
    ```
-
-Boost version `1.81.0` or newer is required. Since some repositories may provide an older `libboost-all-dev` release, you may need to install Boost manually from the [official Boost repository](https://github.com/boostorg/boost).
+> [!WARNING]
+> Boost version `1.81.0` or newer is required. Since some repositories may provide an older `libboost-all-dev` release, you may need to install Boost manually from the [official Boost repository](https://github.com/boostorg/boost).
 
 The last required dependency is Catch2 version `3.0.0` or newer. The following commands install a tested version of the software.
 
@@ -73,21 +75,25 @@ To analyze your system using TCompos, follow the steps below to decompose it and
 
 1. **Decompose Your System**
 
-Use the `system_decomposer.py` script to split your system into two parts:
+You need to use the `system_decomposer.py` script to split your system into an **Open system** (includes the error property automaton) and an **Environment**, using the following command:
 
-* **Open system** (includes the property automaton)
-* **Environment**
+```
+python script.py \
+  --model <model_file> \
+  --os <open_system_component_1> <open_system_component_2> ... \
+  --env <environment_component_1> <environment_component_2> ...
+```
 
 The input file must follow the [TChecker input language format](https://github.com/ticktac-project/tchecker/wiki/TChecker-file-format).
 
-When modeling properties, treat them as **safety properties** using a special **error state** labeled `Pi`. The property automaton should be included in the **open system** file.
+Properties should be modeled as **safety properties** using a special **error state** labeled `Pi`. This error property automaton should be included in the **open system** component, along with any automaton that has an invariant.
 
 2. **Generated Output Files**
 
-Running the system generator on an input file `x` will produce the following:
+Running the system generator on an input model named `x` will produce the following output:
 
-* `x_orig`: The original system with some modifications, used internally for reference
-* `x_prop`: The open system (with property automaton)
+* `x_orig`: The original system with some modifications to names, used internally for reference
+* `x_prop`: The open system (including the error property automaton)
 * `x_env`: The environment
 
 3. **Run the Algorithm**
@@ -102,6 +108,8 @@ Replace `[algo]` with one of the following:
 
 * `reach`: for the standard reachability algorithm
 * `compos`: for the compositional verification approach
+
+Both algorithms are configured to use the `EXTRA_LU_PLUS_GLOBAL` extrapolation with global-clock semantics, in accordance with the compositional algorithmic framework.
 
 ## License
 MIT License

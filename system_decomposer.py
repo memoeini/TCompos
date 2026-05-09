@@ -7,28 +7,32 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Process automata lists.")
 parser.add_argument(
-    "--prop_automata",
+    "--os",
     nargs="+",
-    default=["example_component1", "example_component2"], # Specify the open system components and the property here, separated by commas
-    help="Components of the Open System (m_1) and the Property",
+    default=[],
+    help="Components of the open system (m_1). The error property (with Pi as the error location) should appear here as well.",
 )
 parser.add_argument(
-    "--env_automata",
+    "--env",
     nargs="+",
-    default=["example_component1", "example_component2"], # Specify the environment components here, separated by commas
+    default=[],
     help="Components of the environment (m_2)",
+)
+parser.add_argument(
+    "--model",
+    required=True,
+    help="Path to the input model file",
 )
 args = parser.parse_args()
 
 
-prop_automata = args.prop_automata
-env_automata = args.env_automata
+prop_automata = args.os
+env_automata = args.env
 
-print("Prop automata: ", prop_automata)
-print("Env automata: ", env_automata)
+print("Open System & Property: ", prop_automata)
+print("Environment: ", env_automata)
 
-# Get the input (this can be from a file or string)
-f = open("./model", "r")
+f = open(args.model, "r")
 
 system_desc = {
     "system": None,
@@ -82,8 +86,6 @@ env_process_set = set(env_automata)
 env_event_set = set()
 env_clock_set = set()
 
-
-# extract and tokenize
 def extract_parts(expression):
     # regular expression to match different components of an exp
     pattern = r"(\w+|[+\-*/%=<>!&|^]+|\d+|\S)"
@@ -92,8 +94,6 @@ def extract_parts(expression):
 
     return parts
 
-
-# find clocks
 for process in prop_process_set:
     for loc in system_desc["processes"][process]["locations"]:
         do_provided_invariant = loc.split("{")[1].split("}")[0].strip().split(":")
@@ -136,7 +136,6 @@ for process in env_process_set:
                     if t in clock_set:
                         env_clock_set.add(t)
 
-# add relevant edges
 for process in prop_process_set:
     for edge in system_desc["processes"][process]["edges"]:
         event = edge.split("{")[0].split(":")[4].strip()

@@ -1,7 +1,7 @@
 ## Description
 TCompos is a tool for verifying the correctness of timed systems modeled as networks of timed automata. Designed for timed safety properties, the tool introduces a new compositional framework based on assume-guarantee reasoning. 
 
-TCompos builds upon the tool [TChecker](https://github.com/ticktac-project/tchecker) and leverages both forward and backward analysis techniques. The approach requires a decomposition of the network into an open-system component and an environment component. This modular view allows it to reason about each part (almost) in isolation before analyzing their combined behavior together. This enables considerable reductions in the size of the state space, allowing the algorithm not only to establish system correctness but also to identify property violations in faulty system models early in the analysis.
+TCompos builds upon the tool [TChecker](https://github.com/ticktac-project/tchecker) and leverages both forward and backward analysis techniques to analyze the system. The approach requires a decomposition of the network into an open-system component and an environment component. This modular view allows it to reason about each part (almost) in isolation before analyzing their combined behavior together. This enables considerable reductions in the size of the state space, allowing the algorithm not only to establish system correctness but also to identify property violations in faulty system models early in the analysis.
 
 ## Installation
 

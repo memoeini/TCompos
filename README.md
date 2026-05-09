@@ -1,16 +1,33 @@
 ## Description
-TCompos is a tool for compositional verification of timed automata. The tool, designed for timed safety properties, introduces a novel compositional framework that alleviates the limitations of the existing frameworks by leveraging both forward and backward analysis techniques, paving the way for more efficient verification of systems. The tool builds upon the tool TChecker by incorporating the new algorithm alongside the existing reachability algorithms, enabaling comparisons between them.
+TCompos is a tool for verifying the correctness of timed systems modeled as networks of timed automata. Designed for timed safety properties, the tool introduces a new compositional framework based on assume-guarantee reasoning. TCompos builds upon the tool [TChecker](https://github.com/ticktac-project/tchecker) and leverages both forward and backward analysis techniques. The approach requires a decomposition of the network into an open-system component and an environment component. This modular view allows it to reason about each part (almost) in isolation before analyzing their combined behavior together. This enables considerable reductions in the size of the state space, allowing the algorithm not only to establish system correctness but also to identify property violations in faulty system models early in the analysis.
 
 ## Installation
-The requirements are the same as those specified for TChecker and are outlined below for reference:
 
-- a C++ compiler with C++17 support (Clang >= 3.6, GNU g++ >= 6. LLVM >= 10.0.0)
-- CMake (>= 2.8.12)
-- flex (>= 2.5.35)
-- bison (>= 3.0.4)
-- The Boost library (>= 1.81.0 -- boost::json is required)
-- Doxygen (>= 1.8.15)
-- Catch2 (>= 3.0.0)
+**Software Dependencies**
+
+> [!NOTE]
+> To avoid manual dependency installation, you can use the provided Docker image containing all required dependencies.
+   
+The requirements are the same as those specified for [TChecker](https://github.com/ticktac-project/tchecker/wiki/Installation-of-TChecker). For convenience, we provide installation commands for Debian-based Linux distributions such as Ubuntu. Users of other operating systems or distributions may need to adapt accordingly.
+
+The command below will install the majority of the required packages:
+   ```
+   sudo apt-get update && sudo apt-get install -y build-essential gcc g++ git cmake bison flex doxygen graphviz libboost-all-dev
+   ```
+
+Boost version `1.81.0` or newer is required. Since some repositories may provide an older `libboost-all-dev` release, you may need to install Boost manually from the [official Boost repository](https://github.com/boostorg/boost).
+
+The last required dependency is Catch2 version `3.0.0` or newer. The following commands install a tested version of the software.
+
+   ```
+   git clone --branch v3.4.0 https://github.com/catchorg/Catch2.git && \
+   cd Catch2 && \
+   cmake -B build && \
+   cmake --build build -j$(nproc) && \
+   sudo cmake --install build
+   ```
+
+**Installation**
 
 To build and install, follow the steps below:
 
@@ -41,7 +58,7 @@ To build and install, follow the steps below:
       cmake ../TCompos -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/install -DCMAKE_PREFIX_PATH=/path/to/bison
       ```
 
-4. **Compile and Install**
+4. **Compile, Generate Documentation, and Install**
 
    ```
    make -j
@@ -49,7 +66,7 @@ To build and install, follow the steps below:
    make install
    ```
 
-For additional information on the installation, please refer to the official [TChecker GitHub repository](https://github.com/ticktac-project/tchecker).
+Further details on the installation are available on the official [TChecker GitHub repository](https://github.com/ticktac-project/tchecker).
 
 ## USAGE
 To analyze your system using TCompos, follow the steps below to decompose it and run the verification algorithm.

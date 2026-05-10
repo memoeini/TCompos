@@ -88,7 +88,7 @@ The input file must follow the [TChecker input language format](https://github.c
 
 Properties should be modeled as **safety properties** using a special **error state** labeled `Pi`. This error property automaton should be included in the **open system** component, along with any automaton that has an invariant.
 
-2. **Generated Output Files**
+**Generated Output Files**
 
 Running the system generator on an input model named `x` will produce the following output:
 
@@ -96,7 +96,7 @@ Running the system generator on an input model named `x` will produce the follow
 * `x_prop`: The open system (including the error property automaton)
 * `x_env`: The environment
 
-3. **Run the Algorithm**
+2. **Run the Algorithm**
 
 Use the following command to verify the system:
 

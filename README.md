@@ -78,7 +78,7 @@ To analyze your system using TCompos, follow the steps below to decompose it and
 You need to use the `system_decomposer.py` script to split your system into an **Open system** (includes the error property automaton) and an **Environment**, using the following command:
 
 ```
-python script.py \
+python system_decomposer.py \
   --model <model_file> \
   --os <open_system_component_1> <open_system_component_2> ... \
   --env <environment_component_1> <environment_component_2> ...

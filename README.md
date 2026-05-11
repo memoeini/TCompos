@@ -1,4 +1,4 @@
-# TCompos: Checking correctness of real-time system models through compositional analysis
+# TCompos: Verifying correctness of real-time system models through compositional analysis
 
 ## Description
 TCompos is a tool for verifying the correctness of timed systems modeled as networks of timed automata. Designed for timed safety properties, the tool introduces a new compositional framework based on assume-guarantee reasoning. 
